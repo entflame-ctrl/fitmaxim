@@ -126,7 +126,7 @@
       ["progress", "Progress", "📈"],
       ["reminders", "Reminders", "💬"]
     ];
-    function money(n){ return "$" + Number(n || 0).toFixed(2); }
+    function money(n){ return "Rs " + Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
     function fdate(d){ return d ? new Date(d).toLocaleDateString() : "-"; }
     function ftime(d){ return d ? new Date(d).toLocaleString() : "-"; }
   %>
