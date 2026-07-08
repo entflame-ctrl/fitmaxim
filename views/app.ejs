@@ -425,6 +425,16 @@
               <tbody>
                 <% reminders.forEach(function(s){
                      var digits = (s.member.phone || "").replace(/[^0-9]/g, "");
+                     // Default country code: Nepal (977).
+                     if (digits) {
+                       if (digits.indexOf("977") === 0) {
+                         // already has country code
+                       } else if (digits.charAt(0) === "0") {
+                         digits = "977" + digits.substring(1); // drop trunk 0
+                       } else {
+                         digits = "977" + digits;
+                       }
+                     }
                      var name = s.member.first_name;
                      var planName = s.plan ? s.plan.name : "membership";
                      var endStr = fdate(s.end_date);
