@@ -3,7 +3,7 @@ services:
     name: gym-management
     env: node
     plan: free
-    buildCommand: npm install && npx prisma generate && npx prisma migrate deploy
+    buildCommand: npm install && npx prisma generate && npx prisma db push
     startCommand: npm start
     envVars:
       # DATABASE_URL is set manually in the Render dashboard
