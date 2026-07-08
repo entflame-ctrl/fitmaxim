@@ -31,6 +31,7 @@ model Member {
   attendances    Attendance[]
   memberTrainers MemberTrainer[]
   invoices       Invoice[]
+  progressEntries ProgressEntry[]
 }
 
 model Plan {
@@ -104,4 +105,18 @@ model Invoice {
 
   member  Member  @relation(fields: [member_id], references: [id], onDelete: Cascade)
   payment Payment @relation(fields: [payment_id], references: [id], onDelete: Cascade)
+}
+
+model ProgressEntry {
+  id        Int      @id @default(autoincrement())
+  member_id Int
+  date      DateTime @default(now())
+  weight    Float? // body weight in kg
+  body_fat  Float? // body fat %
+  chest     Float? // cm
+  waist     Float? // cm
+  arms      Float? // cm
+  thighs    Float? // cm
+
+  member Member @relation(fields: [member_id], references: [id], onDelete: Cascade)
 }

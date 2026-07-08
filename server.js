@@ -127,6 +127,17 @@ async function appHandler(req, res) {
         `/app?page=trainers&success_msg=${encodeURIComponent("Trainer deleted")}`
       );
     }
+    if (req.query.delete_progress) {
+      const entry = await prisma.progressEntry.findUnique({
+        where: { id: Number(req.query.delete_progress) },
+      });
+      await prisma.progressEntry.delete({
+        where: { id: Number(req.query.delete_progress) },
+      });
+      return res.redirect(
+        `/app?page=progress${entry ? "&member_id=" + entry.member_id : ""}&success_msg=${encodeURIComponent("Progress entry deleted")}`
+      );
+    }
 
     // --- Handle POST actions ---
     if (req.method === "POST" && req.body.action) {
@@ -258,6 +269,27 @@ async function appHandler(req, res) {
           `/app?page=trainers&success_msg=${encodeURIComponent("Trainer assigned")}`
         );
       }
+
+      if (action === "add_progress") {
+        const num = (v) =>
+          v === undefined || v === null || v === "" ? null : parseFloat(v);
+        const memberId = Number(req.body.member_id);
+        await prisma.progressEntry.create({
+          data: {
+            member_id: memberId,
+            date: req.body.date ? new Date(req.body.date) : new Date(),
+            weight: num(req.body.weight),
+            body_fat: num(req.body.body_fat),
+            chest: num(req.body.chest),
+            waist: num(req.body.waist),
+            arms: num(req.body.arms),
+            thighs: num(req.body.thighs),
+          },
+        });
+        return res.redirect(
+          `/app?page=progress&member_id=${memberId}&success_msg=${encodeURIComponent("Progress entry added")}`
+        );
+      }
     }
 
     // --- Always fetch shared data ---
@@ -278,6 +310,8 @@ async function appHandler(req, res) {
       attendance: [],
       memberTrainers: [],
       reminders: [],
+      progress: [],
+      progress_member_id: null,
     };
 
     // --- Page specific data ---
@@ -338,6 +372,17 @@ async function appHandler(req, res) {
         .filter((s) => s.end_date <= soon)
         .map((s) => ({ ...s, expired: s.end_date < now }))
         .sort((a, b) => new Date(a.end_date) - new Date(b.end_date));
+    }
+
+    if (page === "progress") {
+      const selId = req.query.member_id ? Number(req.query.member_id) : null;
+      data.progress_member_id = selId;
+      if (selId) {
+        data.progress = await prisma.progressEntry.findMany({
+          where: { member_id: selId },
+          orderBy: { date: "asc" }, // chronological for the chart
+        });
+      }
     }
 
     res.render("app", data);

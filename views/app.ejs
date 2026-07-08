@@ -38,6 +38,7 @@
       ["payments", "Payments", "💳"],
       ["attendance", "Attendance", "📅"],
       ["trainers", "Trainers", "🏋️"],
+      ["progress", "Progress", "📈"],
       ["reminders", "Reminders", "💬"]
     ];
     function money(n){ return "$" + Number(n || 0).toFixed(2); }
@@ -406,6 +407,138 @@
             </div>
           </div>
         </div>
+      <% } %>
+
+      <!-- ================= PROGRESS ================= -->
+      <% if (page === "progress") {
+           var selMember = members.find(function(m){ return m.id === progress_member_id; });
+           var labels = progress.map(function(p){ return fdate(p.date); });
+           var weightData = progress.map(function(p){ return p.weight; });
+           var fatData = progress.map(function(p){ return p.body_fat; });
+      %>
+        <div class="row g-4">
+          <div class="col-lg-4">
+            <div class="card p-4">
+              <h6 class="fw-bold mb-3">Add Progress Entry</h6>
+              <form method="POST" action="/app">
+                <input type="hidden" name="action" value="add_progress" />
+                <input type="hidden" name="page" value="progress" />
+                <div class="mb-2">
+                  <label class="form-label small text-muted mb-1">Member</label>
+                  <select name="member_id" class="form-select" required>
+                    <option value="">Select member</option>
+                    <% members.forEach(function(m){ %>
+                      <option value="<%= m.id %>" <%= m.id === progress_member_id ? "selected" : "" %>><%= m.first_name %> <%= m.last_name %> (<%= m.membership_id %>)</option>
+                    <% }); %>
+                  </select>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label small text-muted mb-1">Date</label>
+                  <input name="date" type="date" class="form-control" />
+                </div>
+                <div class="row g-2">
+                  <div class="col-6 mb-2"><input name="weight" type="number" step="0.1" class="form-control" placeholder="Weight (kg)" /></div>
+                  <div class="col-6 mb-2"><input name="body_fat" type="number" step="0.1" class="form-control" placeholder="Body fat (%)" /></div>
+                  <div class="col-6 mb-2"><input name="chest" type="number" step="0.1" class="form-control" placeholder="Chest (cm)" /></div>
+                  <div class="col-6 mb-2"><input name="waist" type="number" step="0.1" class="form-control" placeholder="Waist (cm)" /></div>
+                  <div class="col-6 mb-2"><input name="arms" type="number" step="0.1" class="form-control" placeholder="Arms (cm)" /></div>
+                  <div class="col-6 mb-2"><input name="thighs" type="number" step="0.1" class="form-control" placeholder="Thighs (cm)" /></div>
+                </div>
+                <button class="btn btn-primary w-100 mt-2">Add Entry</button>
+              </form>
+            </div>
+
+            <div class="card p-4 mt-4">
+              <h6 class="fw-bold mb-3">View Member Progress</h6>
+              <form method="GET" action="/app">
+                <input type="hidden" name="page" value="progress" />
+                <div class="mb-2">
+                  <select name="member_id" class="form-select" onchange="this.form.submit()">
+                    <option value="">Select member to view</option>
+                    <% members.forEach(function(m){ %>
+                      <option value="<%= m.id %>" <%= m.id === progress_member_id ? "selected" : "" %>><%= m.first_name %> <%= m.last_name %></option>
+                    <% }); %>
+                  </select>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="col-lg-8">
+            <% if (!progress_member_id) { %>
+              <div class="card p-4 text-center text-muted">
+                Select a member on the left to view their fitness progress.
+              </div>
+            <% } else { %>
+              <div class="card p-4">
+                <h6 class="fw-bold mb-3">
+                  📈 Progress<% if (selMember) { %> — <%= selMember.first_name %> <%= selMember.last_name %><% } %>
+                </h6>
+                <% if (progress.length === 0) { %>
+                  <p class="text-muted mb-0">No progress entries yet for this member. Add one on the left.</p>
+                <% } else { %>
+                  <canvas id="progressChart" height="110"></canvas>
+                <% } %>
+              </div>
+
+              <% if (progress.length > 0) { %>
+                <div class="card p-4 mt-4">
+                  <h6 class="fw-bold mb-3">Entries</h6>
+                  <div class="table-responsive">
+                    <table class="table align-middle">
+                      <thead><tr>
+                        <th>Date</th><th>Weight</th><th>Body Fat</th><th>Chest</th><th>Waist</th><th>Arms</th><th>Thighs</th><th></th>
+                      </tr></thead>
+                      <tbody>
+                        <% // newest first for the table
+                           progress.slice().reverse().forEach(function(p){ %>
+                          <tr>
+                            <td><%= fdate(p.date) %></td>
+                            <td><%= p.weight != null ? p.weight + " kg" : "-" %></td>
+                            <td><%= p.body_fat != null ? p.body_fat + " %" : "-" %></td>
+                            <td><%= p.chest != null ? p.chest + " cm" : "-" %></td>
+                            <td><%= p.waist != null ? p.waist + " cm" : "-" %></td>
+                            <td><%= p.arms != null ? p.arms + " cm" : "-" %></td>
+                            <td><%= p.thighs != null ? p.thighs + " cm" : "-" %></td>
+                            <td><a href="/app?page=progress&delete_progress=<%= p.id %>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this entry?')">Delete</a></td>
+                          </tr>
+                        <% }); %>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              <% } %>
+            <% } %>
+          </div>
+        </div>
+
+        <% if (progress_member_id && progress.length > 0) { %>
+          <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+          <script>
+            (function(){
+              var ctx = document.getElementById("progressChart");
+              if (!ctx) return;
+              new Chart(ctx, {
+                type: "line",
+                data: {
+                  labels: <%- JSON.stringify(labels) %>,
+                  datasets: [
+                    { label: "Weight (kg)", data: <%- JSON.stringify(weightData) %>, borderColor: "#2a5298", backgroundColor: "rgba(42,82,152,.1)", tension: .3, spanGaps: true, yAxisID: "y" },
+                    { label: "Body Fat (%)", data: <%- JSON.stringify(fatData) %>, borderColor: "#e67e22", backgroundColor: "rgba(230,126,34,.1)", tension: .3, spanGaps: true, yAxisID: "y1" }
+                  ]
+                },
+                options: {
+                  responsive: true,
+                  interaction: { mode: "index", intersect: false },
+                  scales: {
+                    y: { type: "linear", position: "left", title: { display: true, text: "Weight (kg)" } },
+                    y1: { type: "linear", position: "right", title: { display: true, text: "Body Fat (%)" }, grid: { drawOnChartArea: false } }
+                  }
+                }
+              });
+            })();
+          </script>
+        <% } %>
       <% } %>
 
       <!-- ================= REMINDERS ================= -->
