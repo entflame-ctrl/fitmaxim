@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       Int    @id @default(autoincrement())
+  name     String
+  email    String @unique
+  password String
+  role     String @default("staff") // admin, staff
+}
+
+model Member {
+  id            Int      @id @default(autoincrement())
+  membership_id String   @unique
+  first_name    String
+  last_name     String
+  phone         String?
+  email         String?
+  gender        String?
+  join_date     DateTime @default(now())
+  status        String   @default("active")
+
+  subscriptions  Subscription[]
+  payments       Payment[]
+  attendances    Attendance[]
+  memberTrainers MemberTrainer[]
+  invoices       Invoice[]
+}
+
+model Plan {
+  id            Int    @id @default(autoincrement())
+  name          String
+  duration_days Int
+  price         Float
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id         Int      @id @default(autoincrement())
+  member_id  Int
+  plan_id    Int
+  start_date DateTime @default(now())
+  end_date   DateTime
+  status     String   @default("active")
+
+  member   Member    @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  plan     Plan      @relation(fields: [plan_id], references: [id], onDelete: Cascade)
+  payments Payment[]
+}
+
+model Payment {
+  id              Int      @id @default(autoincrement())
+  member_id       Int
+  subscription_id Int?
+  amount          Float
+  payment_method  String   @default("cash")
+  payment_date    DateTime @default(now())
+
+  member       Member        @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscription_id], references: [id], onDelete: SetNull)
+  invoices     Invoice[]
+}
+
+model Attendance {
+  id        Int       @id @default(autoincrement())
+  member_id Int
+  check_in  DateTime  @default(now())
+  check_out DateTime?
+
+  member Member @relation(fields: [member_id], references: [id], onDelete: Cascade)
+}
+
+model Trainer {
+  id             Int    @id @default(autoincrement())
+  name           String
+  phone          String?
+  specialization String?
+
+  memberTrainers MemberTrainer[]
+}
+
+model MemberTrainer {
+  id         Int @id @default(autoincrement())
+  member_id  Int
+  trainer_id Int
+
+  member  Member  @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  trainer Trainer @relation(fields: [trainer_id], references: [id], onDelete: Cascade)
+}
+
+model Invoice {
+  id             Int    @id @default(autoincrement())
+  member_id      Int
+  payment_id     Int
+  invoice_number String @unique
+  total_amount   Float
+
+  member  Member  @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  payment Payment @relation(fields: [payment_id], references: [id], onDelete: Cascade)
+}

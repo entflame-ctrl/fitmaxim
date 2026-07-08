@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gym Management System</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    :root { --sidebar-w: 240px; }
+    body { background: #f4f6fb; }
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-w);
+      background: linear-gradient(180deg, #1e3c72, #2a5298); color: #fff;
+      padding: 20px 0; overflow-y: auto;
+    }
+    .sidebar .brand { font-weight: 700; font-size: 20px; padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,.15); }
+    .sidebar a {
+      display: flex; align-items: center; gap: 10px; color: rgba(255,255,255,.85);
+      padding: 12px 20px; text-decoration: none; font-size: 15px;
+    }
+    .sidebar a:hover, .sidebar a.active { background: rgba(255,255,255,.12); color: #fff; }
+    .main { margin-left: var(--sidebar-w); }
+    .navbar-top { background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    .content { padding: 24px; }
+    .stat-card { border: none; border-radius: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.06); }
+    .stat-card .num { font-size: 32px; font-weight: 700; }
+    .card { border: none; border-radius: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.06); }
+    .table thead { background: #f0f3fa; }
+    .page-title { font-weight: 700; }
+  </style>
+</head>
+<body>
+  <%
+    const nav = [
+      ["dashboard", "Dashboard", "📊"],
+      ["members", "Members", "👥"],
+      ["plans", "Plans", "📋"],
+      ["payments", "Payments", "💳"],
+      ["attendance", "Attendance", "📅"],
+      ["trainers", "Trainers", "🏋️"]
+    ];
+    function money(n){ return "$" + Number(n || 0).toFixed(2); }
+    function fdate(d){ return d ? new Date(d).toLocaleDateString() : "-"; }
+    function ftime(d){ return d ? new Date(d).toLocaleString() : "-"; }
+  %>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="brand">💪 GymManager</div>
+    <% nav.forEach(function(item){ %>
+      <a href="/app?page=<%= item[0] %>" class="<%= page === item[0] ? 'active' : '' %>">
+        <span><%= item[2] %></span> <span><%= item[1] %></span>
+      </a>
+    <% }); %>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <nav class="navbar navbar-top px-4 py-3 d-flex justify-content-between align-items-center">
+      <h5 class="mb-0 page-title text-capitalize"><%= page %></h5>
+      <div class="d-flex align-items-center gap-3">
+        <span class="text-muted">👤 <%= user.name %> <span class="badge bg-secondary"><%= user.role %></span></span>
+        <a href="/logout" class="btn btn-sm btn-outline-danger">Logout</a>
+      </div>
+    </nav>
+
+    <div class="content">
+      <% if (success_msg) { %>
+        <div class="alert alert-success"><%= success_msg %></div>
+      <% } %>
+
+      <!-- ================= DASHBOARD ================= -->
+      <% if (page === "dashboard") { %>
+        <div class="row g-4">
+          <div class="col-md-4">
+            <div class="card stat-card p-4">
+              <div class="text-muted">Total Members</div>
+              <div class="num text-primary"><%= stats.total_members %></div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card stat-card p-4">
+              <div class="text-muted">Active Members</div>
+              <div class="num text-success"><%= stats.active_members %></div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card stat-card p-4">
+              <div class="text-muted">Total Revenue</div>
+              <div class="num text-dark"><%= money(stats.total_revenue) %></div>
+            </div>
+          </div>
+        </div>
+      <% } %>
+
+      <!-- ================= MEMBERS ================= -->
+      <% if (page === "members") { %>
+        <div class="row g-4">
+          <div class="col-lg-4">
+            <div class="card p-4">
+              <h6 class="fw-bold mb-3">Add Member</h6>
+              <form method="POST" action="/app">
+                <input type="hidden" name="action" value="add_member" />
+                <input type="hidden" name="page" value="members" />
+                <div class="mb-2"><input name="first_name" class="form-control" placeholder="First name" required /></div>
+                <div class="mb-2"><input name="last_name" class="form-control" placeholder="Last name" required /></div>
+                <div class="mb-2"><input name="phone" class="form-control" placeholder="Phone" /></div>
+                <div class="mb-2"><input name="email" type="email" class="form-control" placeholder="Email" /></div>
+                <div class="mb-2">
+                  <select name="gender" class="form-select">
+                    <option value="">Gender</option>
+                    <option>Male</option><option>Female</option><option>Other</option>
+                  </select>
+                </div>
+                <button class="btn btn-primary w-100">Add Member</button>
+              </form>
+            </div>
+
+            <div class="card p-4 mt-4">
+              <h6 class="fw-bold mb-3">Assign Plan</h6>
+              <form method="POST" action="/app">
+                <input type="hidden" name="action" value="assign_plan" />
+                <input type="hidden" name="page" value="members" />
+                <div class="mb-2">
+                  <select name="member_id" class="form-select" required>
+                    <option value="">Select member</option>
+                    <% members.forEach(function(m){ %>
+                      <option value="<%= m.id %>"><%= m.first_name %> <%= m.last_name %> (<%= m.membership_id %>)</option>
+                    <% }); %>
+                  </select>
+                </div>
+                <div class="mb-2">
+                  <select name="plan_id" class="form-select" required>
+                    <option value="">Select plan</option>
+                    <% plans.forEach(function(p){ %>
+                      <option value="<%= p.id %>"><%= p.name %> — <%= money(p.price) %></option>
+                    <% }); %>
+                  </select>
+                </div>
+                <button class="btn btn-outline-primary w-100">Assign Plan</button>
+              </form>
+            </div>
+          </div>
+
+          <div class="col-lg-8">
+            <div class="card p-4">
+              <h6 class="fw-bold mb-3">Members List</h6>
+              <div class="table-responsive">
+                <table class="table align-middle">
+                  <thead><tr>
+                    <th>ID</th><th>Name</th><th>Phone</th><th>Join</th><th>Status</th><th></th>
+                  </tr></thead>
+                  <tbody>
+                    <% members.forEach(function(m){ %>
+                      <tr>
+                        <td><%= m.membership_id %></td>
+                        <td><%= m.first_name %> <%= m.last_name %></td>
+                        <td><%= m.phone || "-" %></td>
+                        <td><%= fdate(m.join_date) %></td>
+                        <td><span class="badge bg-<%= m.status === 'active' ? 'success' : 'secondary' %>"><%= m.status %></span></td>
+                        <td><a href="/app?page=members&delete_member=<%= m.id %>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this member?')">Delete</a></td>
+                      </tr>
+                    <% }); %>
+                    <% if (members.length === 0) { %><tr><td colspan="6" class="text-center text-muted">No members yet.</td></tr><% } %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% } %>
+
+      <!-- ================= PLANS ================= -->
+      <% if (page === "plans") { %>
+        <div class="row g-4">
+          <div class="col-lg-4">
+            <div class="card p-4">
+              <h6 class="fw-bold mb-3">Add Plan</h6>
+              <form method="POST" action="/app">
+                <input type="hidden" name="action" value="add_plan" />
+                <input type="hidden" name="page" value="plans" />
+                <div class="mb-2"><input name="name" class="form-control" placeholder="Plan name" required /></div>
+                <div class="mb-2"><input name="duration_days" type="number" class="form-control" placeholder="Duration (days)" required /></div>
+                <div class="mb-2"><input name="price" type="number" step="0.01" class="form-control" placeholder="Price" required /></div>
+                <button class="btn btn-primary w-100">Add Plan</button>
+              </form>
+            </div>
+          </div>
+          <div class="col-lg-8">
+            <div class="card p-4">
+              <h6 class="fw-bold mb-3">Plans List</h6>
+              <div class="table-responsive">
+                <table class="table align-middle">
+                  <thead><tr><th>Name</th><th>Duration</th><th>Price</th><th></th></tr></thead>
+                  <tbody>
+                    <% plans.forEach(function(p){ %>
+                      <tr>
+                        <td><%= p.name %></td>
+                        <td><%= p.duration_days %> days</td>
+                        <td><%= money(p.price) %></td>
+                        <td><a href="/app?page=plans&delete_plan=<%= p.id %>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this plan?')">Delete</a></td>
+                      </tr>
+                    <% }); %>
+                    <% if (plans.length === 0) { %><tr><td colspan="4" class="text-center text-muted">No plans yet.</td></tr><% } %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% } %>
+
+      <!-- ================= PAYMENTS ================= -->
+      <% if (page === "payments") { %>
+        <div class="row g-4">
+          <div class="col-lg-4">
+            <div class="card p-4">
+              <h6 class="fw-bold mb-3">Record Payment</h6>
+              <form method="POST" action="/app">
+                <input type="hidden" name="action" value="add_payment" />
+                <input type="hidden" name="page" value="payments" />
+                <div class="mb-2">
+                  <select name="member_id" class="form-select" required>
+                    <option value="">Select member</option>
+                    <% members.forEach(function(m){ %>
+                      <option value="<%= m.id %>"><%= m.first_name %> <%= m.last_name %> (<%= m.membership_id %>)</option>
+                    <% }); %>
+                  </select>
+                </div>
+                <div class="mb-2"><input name="amount" type="number" step="0.01" class="form-control" placeholder="Amount" required /></div>
+                <div class="mb-2">
+                  <select name="payment_method" class="form-select">
+                    <option value="cash">Cash</option>
+                    <option value="card">Card</option>
+                    <option value="upi">UPI</option>
+                    <option value="bank">Bank Transfer</option>
+                  </select>
+                </div>
+                <button class="btn btn-primary w-100">Record Payment</button>
+              </form>
+            </div>
+          </div>
+          <div class="col-lg-8">
+            <div class="card p-4">
+              <h6 class="fw-bold mb-3">Payments</h6>
+              <div class="table-responsive">
+                <table class="table align-middle">
+                  <thead><tr><th>Member</th><th>Amount</th><th>Method</th><th>Date</th></tr></thead>
+                  <tbody>
+                    <% payments.forEach(function(p){ %>
+                      <tr>
+                        <td><%= p.member ? p.member.first_name + " " + p.member.last_name : "-" %></td>
+                        <td><%= money(p.amount) %></td>
+                        <td><span class="badge bg-info text-dark"><%= p.payment_method %></span></td>
+                        <td><%= ftime(p.payment_date) %></td>
+                      </tr>
+                    <% }); %>
+                    <% if (payments.length === 0) { %><tr><td colspan="4" class="text-center text-muted">No payments yet.</td></tr><% } %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% } %>
+
+      <!-- ================= ATTENDANCE ================= -->
+      <% if (page === "attendance") { %>
+        <div class="row g-4">
+          <div class="col-lg-4">
+            <div class="card p-4">
+              <h6 class="fw-bold mb-3">Check In</h6>
+              <form method="POST" action="/app" class="mb-4">
+                <input type="hidden" name="action" value="checkin_member" />
+                <input type="hidden" name="page" value="attendance" />
+                <div class="mb-2">
+                  <select name="member_id" class="form-select" required>
+                    <option value="">Select member</option>
+                    <% members.forEach(function(m){ %>
+                      <option value="<%= m.id %>"><%= m.first_name %> <%= m.last_name %></option>
+                    <% }); %>
+                  </select>
+                </div>
+                <button class="btn btn-success w-100">Check In</button>
+              </form>
+
+              <h6 class="fw-bold mb-3">Check Out</h6>
+              <form method="POST" action="/app">
+                <input type="hidden" name="action" value="checkout_member" />
+                <input type="hidden" name="page" value="attendance" />
+                <div class="mb-2">
+                  <select name="member_id" class="form-select" required>
+                    <option value="">Select member</option>
+                    <% members.forEach(function(m){ %>
+                      <option value="<%= m.id %>"><%= m.first_name %> <%= m.last_name %></option>
+                    <% }); %>
+                  </select>
+                </div>
+                <button class="btn btn-warning w-100">Check Out</button>
+              </form>
+            </div>
+          </div>
+          <div class="col-lg-8">
+            <div class="card p-4">
+              <h6 class="fw-bold mb-3">Attendance Logs</h6>
+              <div class="table-responsive">
+                <table class="table align-middle">
+                  <thead><tr><th>Member</th><th>Check In</th><th>Check Out</th></tr></thead>
+                  <tbody>
+                    <% attendance.forEach(function(a){ %>
+                      <tr>
+                        <td><%= a.member ? a.member.first_name + " " + a.member.last_name : "-" %></td>
+                        <td><%= ftime(a.check_in) %></td>
+                        <td><%= a.check_out ? ftime(a.check_out) : '<span class="badge bg-success">In Gym</span>' %></td>
+                      </tr>
+                    <% }); %>
+                    <% if (attendance.length === 0) { %><tr><td colspan="3" class="text-center text-muted">No logs yet.</td></tr><% } %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% } %>
+
+      <!-- ================= TRAINERS ================= -->
+      <% if (page === "trainers") { %>
+        <div class="row g-4">
+          <div class="col-lg-4">
+            <div class="card p-4">
+              <h6 class="fw-bold mb-3">Add Trainer</h6>
+              <form method="POST" action="/app">
+                <input type="hidden" name="action" value="add_trainer" />
+                <input type="hidden" name="page" value="trainers" />
+                <div class="mb-2"><input name="name" class="form-control" placeholder="Trainer name" required /></div>
+                <div class="mb-2"><input name="phone" class="form-control" placeholder="Phone" /></div>
+                <div class="mb-2"><input name="specialization" class="form-control" placeholder="Specialization" /></div>
+                <button class="btn btn-primary w-100">Add Trainer</button>
+              </form>
+            </div>
+
+            <div class="card p-4 mt-4">
+              <h6 class="fw-bold mb-3">Assign Trainer</h6>
+              <form method="POST" action="/app">
+                <input type="hidden" name="action" value="assign_trainer" />
+                <input type="hidden" name="page" value="trainers" />
+                <div class="mb-2">
+                  <select name="member_id" class="form-select" required>
+                    <option value="">Select member</option>
+                    <% members.forEach(function(m){ %>
+                      <option value="<%= m.id %>"><%= m.first_name %> <%= m.last_name %></option>
+                    <% }); %>
+                  </select>
+                </div>
+                <div class="mb-2">
+                  <select name="trainer_id" class="form-select" required>
+                    <option value="">Select trainer</option>
+                    <% trainers.forEach(function(t){ %>
+                      <option value="<%= t.id %>"><%= t.name %></option>
+                    <% }); %>
+                  </select>
+                </div>
+                <button class="btn btn-outline-primary w-100">Assign Trainer</button>
+              </form>
+            </div>
+          </div>
+
+          <div class="col-lg-8">
+            <div class="card p-4">
+              <h6 class="fw-bold mb-3">Trainers</h6>
+              <div class="table-responsive">
+                <table class="table align-middle">
+                  <thead><tr><th>Name</th><th>Phone</th><th>Specialization</th><th></th></tr></thead>
+                  <tbody>
+                    <% trainers.forEach(function(t){ %>
+                      <tr>
+                        <td><%= t.name %></td>
+                        <td><%= t.phone || "-" %></td>
+                        <td><%= t.specialization || "-" %></td>
+                        <td><a href="/app?page=trainers&delete_trainer=<%= t.id %>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this trainer?')">Delete</a></td>
+                      </tr>
+                    <% }); %>
+                    <% if (trainers.length === 0) { %><tr><td colspan="4" class="text-center text-muted">No trainers yet.</td></tr><% } %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="card p-4 mt-4">
+              <h6 class="fw-bold mb-3">Trainer Assignments</h6>
+              <div class="table-responsive">
+                <table class="table align-middle">
+                  <thead><tr><th>Member</th><th>Trainer</th></tr></thead>
+                  <tbody>
+                    <% memberTrainers.forEach(function(mt){ %>
+                      <tr>
+                        <td><%= mt.member ? mt.member.first_name + " " + mt.member.last_name : "-" %></td>
+                        <td><%= mt.trainer ? mt.trainer.name : "-" %></td>
+                      </tr>
+                    <% }); %>
+                    <% if (memberTrainers.length === 0) { %><tr><td colspan="2" class="text-center text-muted">No assignments yet.</td></tr><% } %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% } %>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
