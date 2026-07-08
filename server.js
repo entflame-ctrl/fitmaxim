@@ -277,6 +277,7 @@ async function appHandler(req, res) {
       payments: [],
       attendance: [],
       memberTrainers: [],
+      reminders: [],
     };
 
     // --- Page specific data ---
@@ -315,6 +316,28 @@ async function appHandler(req, res) {
         orderBy: { id: "desc" },
         include: { member: true, trainer: true },
       });
+    }
+
+    if (page === "reminders") {
+      const now = new Date();
+      const soon = addDays(now, 7); // "expiring soon" window
+      const subs = await prisma.subscription.findMany({
+        orderBy: { end_date: "desc" },
+        include: { member: true, plan: true },
+      });
+      // Keep only each member's most recent subscription.
+      const seen = new Set();
+      const latest = [];
+      for (const s of subs) {
+        if (seen.has(s.member_id)) continue;
+        seen.add(s.member_id);
+        latest.push(s);
+      }
+      // Expired or expiring within the window, soonest first.
+      data.reminders = latest
+        .filter((s) => s.end_date <= soon)
+        .map((s) => ({ ...s, expired: s.end_date < now }))
+        .sort((a, b) => new Date(a.end_date) - new Date(b.end_date));
     }
 
     res.render("app", data);

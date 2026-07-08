@@ -37,7 +37,8 @@
       ["plans", "Plans", "📋"],
       ["payments", "Payments", "💳"],
       ["attendance", "Attendance", "📅"],
-      ["trainers", "Trainers", "🏋️"]
+      ["trainers", "Trainers", "🏋️"],
+      ["reminders", "Reminders", "💬"]
     ];
     function money(n){ return "$" + Number(n || 0).toFixed(2); }
     function fdate(d){ return d ? new Date(d).toLocaleDateString() : "-"; }
@@ -403,6 +404,63 @@
                 </table>
               </div>
             </div>
+          </div>
+        </div>
+      <% } %>
+
+      <!-- ================= REMINDERS ================= -->
+      <% if (page === "reminders") { %>
+        <div class="card p-4">
+          <h6 class="fw-bold mb-1">Payment Reminders</h6>
+          <p class="text-muted small mb-3">
+            Members whose membership has expired or expires within 7 days.
+            Click <strong>Send WhatsApp</strong> to open WhatsApp with a
+            ready-to-send reminder message.
+          </p>
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead><tr>
+                <th>Member</th><th>Phone</th><th>Plan</th><th>Expiry</th><th>Status</th><th></th>
+              </tr></thead>
+              <tbody>
+                <% reminders.forEach(function(s){
+                     var digits = (s.member.phone || "").replace(/[^0-9]/g, "");
+                     var name = s.member.first_name;
+                     var planName = s.plan ? s.plan.name : "membership";
+                     var endStr = fdate(s.end_date);
+                     var msg = s.expired
+                       ? "Hi " + name + ", your " + planName + " membership at GymManager expired on " + endStr + ". Please renew to continue enjoying our services. Thank you!"
+                       : "Hi " + name + ", a friendly reminder that your " + planName + " membership at GymManager expires on " + endStr + ". Please renew soon to avoid interruption. Thank you!";
+                     var waLink = "https://wa.me/" + digits + "?text=" + encodeURIComponent(msg);
+                %>
+                  <tr>
+                    <td><%= s.member.first_name %> <%= s.member.last_name %></td>
+                    <td><%= s.member.phone || "-" %></td>
+                    <td><%= planName %></td>
+                    <td><%= endStr %></td>
+                    <td>
+                      <% if (s.expired) { %>
+                        <span class="badge bg-danger">Expired</span>
+                      <% } else { %>
+                        <span class="badge bg-warning text-dark">Expiring soon</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <% if (digits) { %>
+                        <a href="<%= waLink %>" target="_blank" rel="noopener" class="btn btn-sm btn-success">
+                          💬 Send WhatsApp
+                        </a>
+                      <% } else { %>
+                        <span class="text-muted small">No phone number</span>
+                      <% } %>
+                    </td>
+                  </tr>
+                <% }); %>
+                <% if (reminders.length === 0) { %>
+                  <tr><td colspan="6" class="text-center text-muted">No members need a reminder right now. 🎉</td></tr>
+                <% } %>
+              </tbody>
+            </table>
           </div>
         </div>
       <% } %>
